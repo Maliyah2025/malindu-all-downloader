@@ -1,0 +1,38 @@
+name: Build Malindu Car Driving 3D APK
+on:
+  push:
+    branches:
+      - malindu-car-driving-3d
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract new 3D Android project
+        run: |
+          mkdir -p car-driving
+          base64 --decode malindu-car-project.tar.xz.b64 | tar -xJf - -C car-driving
+          test -f car-driving/app/src/main/java/com/malindu/cardriving/MainActivity.java
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+      - name: Build signed installable debug APK
+        working-directory: car-driving
+        run: gradle --no-daemon --stacktrace :app:assembleDebug
+      - name: Check APK under 300 MB
+        run: |
+          test -f car-driving/app/build/outputs/apk/debug/app-debug.apk
+          test $(stat -c%s car-driving/app/build/outputs/apk/debug/app-debug.apk) -lt 314572800
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Malindu-Car-Driving-3D-APK
+          path: car-driving/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
